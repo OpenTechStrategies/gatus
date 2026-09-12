@@ -5,6 +5,8 @@ import "github.com/TwiN/gatus/v5/config/key"
 // Status contains the evaluation Results of an Endpoint
 // This is essentially a DTO
 type Status struct {
+	// IntervalSeconds is the configured interval between endpoint checks.
+	IntervalSeconds int `json:"intervalSeconds,omitempty"`
 	// RecentChecksMaximumRows is the configured maximum number of Recent Checks rows for the UI.
 	RecentChecksMaximumRows int `json:"recentChecksMaximumRows,omitempty"`
 	// RecentChecksResultsPerRow is the configured number of results in each Recent Checks row.

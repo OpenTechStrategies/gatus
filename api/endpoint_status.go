@@ -109,6 +109,7 @@ func EndpointStatus(cfg *config.Config) fiber.Handler {
 			return c.Status(404).SendString("not found")
 		}
 		if ep.UIConfig != nil {
+			endpointStatus.IntervalSeconds = int(ep.Interval.Seconds())
 			endpointStatus.RecentChecksMaximumRows = ep.UIConfig.RecentChecksMaximumRows
 			endpointStatus.RecentChecksResultsPerRow = ep.UIConfig.RecentChecksResultsPerRow
 			endpointStatus.RecentChecksResultHeight = ep.UIConfig.RecentChecksResultHeight

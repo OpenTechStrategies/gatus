@@ -89,18 +89,20 @@
                 <EndpointCard 
                   v-if="endpointStatus"
                   :endpoint="endpointStatus"
-                  :maxResults="resultPageSize"
+                  :maxResults="resultRequestPageSize"
+                  :intervalSeconds="intervalSeconds"
+                  :resultsPerRow="resultsPerRow"
+                  :resultHeight="resultHeight"
                   :showAverageResponseTime="showAverageResponseTime"
                   @showTooltip="showTooltip"
                   class="border-0 shadow-none bg-transparent p-0"
                 />
                 <div v-if="endpointStatus && endpointStatus.key" class="pt-4 border-t">
-                  <Pagination @page="changePage" :numberOfResultsPerPage="resultPageSize" :currentPageProp="currentPage" />
+                  <Pagination @page="changePage" :numberOfResultsPerPage="resultRequestPageSize" :currentPageProp="currentPage" />
                 </div>
               </div>
             </CardContent>
           </Card>
-
           <div v-if="showResponseTimeChartAndBadges" class="space-y-6">
             <Card>
               <CardHeader>
@@ -208,8 +210,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import StatusBadge from '@/components/StatusBadge.vue'
 import EndpointCard from '@/components/EndpointCard.vue'
-import Settings from '@/components/Settings.vue'
 import Pagination from '@/components/Pagination.vue'
+import Settings from '@/components/Settings.vue'
 import Loading from '@/components/Loading.vue'
 import ResponseTimeChart from '@/components/ResponseTimeChart.vue'
 import { generatePrettyTimeAgo, generatePrettyTimeDifference } from '@/utils/time'
@@ -218,11 +220,14 @@ const router = useRouter()
 const route = useRoute()
 const emit = defineEmits(['showTooltip'])
 
-const endpointStatus = ref(null) // For paginated historical data
-const currentStatus = ref(null) // For current/latest status (always page 1)
+const endpointStatus = ref(null)
+const currentStatus = ref(null)
 const events = ref([])
 const currentPage = ref(1)
-const resultPageSize = 50
+const resultRequestPageSize = ref(1)
+const intervalSeconds = ref(0)
+const resultsPerRow = ref(50)
+const resultHeight = ref('1.5rem')
 const showResponseTimeChartAndBadges = ref(false)
 const showAverageResponseTime = ref(localStorage.getItem('gatus:show-average-response-time') !== 'false')
 const selectedChartDuration = ref('24h')
@@ -307,7 +312,7 @@ const lastCheckTime = computed(() => {
 const fetchData = async () => {
   isRefreshing.value = true
   try {
-    const response = await fetch(`/api/v1/endpoints/${route.params.key}/statuses?page=${currentPage.value}&pageSize=${resultPageSize}`, {
+  const response = await fetch(`/api/v1/endpoints/${route.params.key}/statuses?page=${currentPage.value}&pageSize=${resultRequestPageSize.value}`, {
       credentials: 'include'
     })
     
@@ -315,9 +320,17 @@ const fetchData = async () => {
       const data = await response.json()
       endpointStatus.value = data
       
-      // Always update currentStatus when on page 1 (including when returning to it)
-      if (currentPage.value === 1) {
-        currentStatus.value = data
+      currentStatus.value = data
+      intervalSeconds.value = data.intervalSeconds || 0
+      if (data.recentChecksMaximumRows && currentPage.value === 1) {
+        resultsPerRow.value = data.recentChecksResultsPerRow || 50
+        resultHeight.value = data.recentChecksResultHeight || '1.5rem'
+        const configuredPageSize = data.recentChecksMaximumRows * resultsPerRow.value
+        if (configuredPageSize !== resultRequestPageSize.value) {
+          resultRequestPageSize.value = configuredPageSize
+          await fetchData()
+          return
+        }
       }
       
       let processedEvents = []

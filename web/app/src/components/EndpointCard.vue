@@ -33,23 +33,26 @@
             <div class="flex-1"></div>
             <p class="text-xs text-muted-foreground" :title="showAverageResponseTime ? 'Average response time' : 'Minimum and maximum response time'">{{ formattedResponseTime }}</p>
           </div>
-          <div class="flex gap-0.5">
-            <div
-              v-for="(result, index) in displayResults"
-              :key="index"
-              :class="[
-                'flex-1 h-6 sm:h-8 rounded-sm transition-all',
-                result ? 'cursor-pointer' : '',
-                result ? (
-                  result.success 
-                    ? (selectedResultIndex === index ? 'bg-green-700' : 'bg-green-500 hover:bg-green-700')
-                    : (selectedResultIndex === index ? 'bg-red-700' : 'bg-red-500 hover:bg-red-700')
-                ) : 'bg-gray-200 dark:bg-gray-700'
-              ]"
-              @mouseenter="result && handleMouseEnter(result, $event)"
-              @mouseleave="result && handleMouseLeave(result, $event)"
-              @click.stop="result && handleClick(result, $event, index)"
-            />
+          <div class="space-y-0.5">
+            <div v-for="(row, rowIndex) in displayRows" :key="rowIndex" class="flex gap-0.5">
+              <div
+                v-for="(result, index) in row"
+                :key="index"
+                :class="[
+                  'flex-1 rounded-sm transition-all',
+                  result ? 'cursor-pointer' : '',
+                  result ? (
+                    result.success
+                      ? (selectedResultIndex === rowIndex * resultsPerRow + index ? 'bg-green-700' : 'bg-green-500 hover:bg-green-700')
+                      : (selectedResultIndex === rowIndex * resultsPerRow + index ? 'bg-red-700' : 'bg-red-500 hover:bg-red-700')
+                  ) : 'bg-gray-200 dark:bg-gray-700'
+                ]"
+                :style="{ height: resultHeight }"
+                @mouseenter="result && handleMouseEnter(result, $event)"
+                @mouseleave="result && handleMouseLeave(result, $event)"
+                @click.stop="result && handleClick(result, $event, rowIndex * resultsPerRow + index)"
+              />
+            </div>
           </div>
           <div class="flex items-center justify-between text-xs text-muted-foreground mt-1">
             <span>{{ oldestResultTime }}</span>
@@ -79,6 +82,18 @@ const props = defineProps({
     type: Number,
     default: 50
   },
+  intervalSeconds: {
+    type: Number,
+    default: 0
+  },
+  resultsPerRow: {
+    type: Number,
+    default: 50
+  },
+  resultHeight: {
+    type: String,
+    default: '1.5rem'
+  },
   showAverageResponseTime: {
     type: Boolean,
     default: true
@@ -89,7 +104,6 @@ const emit = defineEmits(['showTooltip'])
 
 // Track selected data point
 const selectedResultIndex = ref(null)
-
 const latestResult = computed(() => {
   if (!props.endpoint.results || props.endpoint.results.length === 0) {
     return null
@@ -107,11 +121,43 @@ const hostname = computed(() => {
 })
 
 const displayResults = computed(() => {
-  const results = [...(props.endpoint.results || [])]
-  while (results.length < props.maxResults) {
-    results.unshift(null)
+  const sourceResults = props.endpoint.results || []
+  if (sourceResults.length === 0) {
+    return []
   }
-  return results.slice(-props.maxResults)
+
+  const results = []
+  const gapThreshold = props.intervalSeconds * 1.8 * 1000
+  for (let i = 0; i < sourceResults.length; i++) {
+    const result = sourceResults[i]
+    if (i > 0 && gapThreshold > 0) {
+      const previousTimestamp = new Date(sourceResults[i - 1].timestamp).getTime()
+      const timestamp = new Date(result.timestamp).getTime()
+      const gap = timestamp - previousTimestamp
+      if (gap > gapThreshold) {
+        const missingResults = Math.max(1, Math.floor(gap / (props.intervalSeconds * 1000)) - 1)
+        results.push(...Array(missingResults).fill(null))
+      }
+    }
+    results.push(result)
+  }
+
+  const limitedResults = results.slice(-props.maxResults)
+  const remainder = limitedResults.length % props.resultsPerRow
+  if (remainder === 0) {
+    return limitedResults
+  }
+
+  const alignmentPadding = props.resultsPerRow - remainder
+  return [...Array(alignmentPadding).fill(null), ...limitedResults]
+})
+
+const displayRows = computed(() => {
+  const rows = []
+  for (let i = 0; i < displayResults.value.length; i += props.resultsPerRow) {
+    rows.push(displayResults.value.slice(i, i + props.resultsPerRow))
+  }
+  return rows
 })
 
 const formattedResponseTime = computed(() => {

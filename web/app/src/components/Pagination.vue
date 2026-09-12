@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center justify-between">
+  <div v-if="maxPages > 1" class="flex items-center justify-between">
     <Button
       variant="outline"
       size="sm"
