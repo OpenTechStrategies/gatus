@@ -19,6 +19,7 @@ import (
 	"github.com/TwiN/gatus/v5/config/announcement"
 	"github.com/TwiN/gatus/v5/config/connectivity"
 	"github.com/TwiN/gatus/v5/config/endpoint"
+	endpointui "github.com/TwiN/gatus/v5/config/endpoint/ui"
 	"github.com/TwiN/gatus/v5/config/key"
 	"github.com/TwiN/gatus/v5/config/maintenance"
 	"github.com/TwiN/gatus/v5/config/remote"
@@ -305,13 +306,13 @@ func parseAndValidateConfigBytes(yamlBytes []byte) (config *Config, err error) {
 		if err := ValidateSecurityConfig(config); err != nil {
 			return nil, err
 		}
+		if err := ValidateUIConfig(config); err != nil {
+			return nil, err
+		}
 		if err := ValidateEndpointsConfig(config); err != nil {
 			return nil, err
 		}
 		if err := ValidateWebConfig(config); err != nil {
-			return nil, err
-		}
-		if err := ValidateUIConfig(config); err != nil {
 			return nil, err
 		}
 		if err := ValidateMaintenanceConfig(config); err != nil {
@@ -475,6 +476,18 @@ func ValidateEndpointsConfig(config *Config) error {
 	duplicateValidationMap := make(map[string]bool)
 	// Validate endpoints
 	for _, ep := range config.Endpoints {
+		if ep.UIConfig == nil {
+			ep.UIConfig = &endpointui.Config{}
+		}
+		if ep.UIConfig.RecentChecksMaximumRows <= 0 {
+			ep.UIConfig.RecentChecksMaximumRows = config.UI.RecentChecksMaximumRows
+		}
+		if ep.UIConfig.RecentChecksResultsPerRow <= 0 {
+			ep.UIConfig.RecentChecksResultsPerRow = config.UI.RecentChecksResultsPerRow
+		}
+		if ep.UIConfig.RecentChecksResultHeight == "" {
+			ep.UIConfig.RecentChecksResultHeight = config.UI.RecentChecksResultHeight
+		}
 		logr.Debugf("[config.ValidateEndpointsConfig] Validating endpoint with key %s", ep.Key())
 		if endpointKey := ep.Key(); duplicateValidationMap[endpointKey] {
 			return fmt.Errorf("invalid endpoint %s: name and group combination must be unique", ep.Key())

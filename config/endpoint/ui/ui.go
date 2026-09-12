@@ -4,6 +4,12 @@ import "errors"
 
 // Config is the UI configuration for endpoint.Endpoint
 type Config struct {
+	// RecentChecksMaximumRows is the maximum number of rows displayed for recent checks.
+	RecentChecksMaximumRows int `yaml:"recent-checks-maximum-rows,omitempty"`
+	// RecentChecksResultsPerRow is the number of results displayed in each Recent Checks row.
+	RecentChecksResultsPerRow int `yaml:"recent-checks-results-per-row,omitempty"`
+	// RecentChecksResultHeight is the CSS height applied to each Recent Checks result.
+	RecentChecksResultHeight string `yaml:"recent-checks-result-height,omitempty"`
 	// HideConditions whether to hide the condition results on the UI
 	HideConditions bool `yaml:"hide-conditions"`
 
@@ -43,6 +49,15 @@ var (
 
 // ValidateAndSetDefaults validates the UI configuration and sets the default values
 func (config *Config) ValidateAndSetDefaults() error {
+	if config.RecentChecksMaximumRows <= 0 {
+		config.RecentChecksMaximumRows = 2
+	}
+	if config.RecentChecksResultsPerRow <= 0 {
+		config.RecentChecksResultsPerRow = 50
+	}
+	if config.RecentChecksResultHeight == "" {
+		config.RecentChecksResultHeight = "1.5rem"
+	}
 	if config.Badge != nil {
 		if len(config.Badge.ResponseTime.Thresholds) != 5 {
 			return ErrInvalidBadgeResponseTimeConfig
@@ -61,6 +76,9 @@ func (config *Config) ValidateAndSetDefaults() error {
 // GetDefaultConfig retrieves the default UI configuration
 func GetDefaultConfig() *Config {
 	return &Config{
+		RecentChecksMaximumRows:     2,
+		RecentChecksResultsPerRow:   50,
+		RecentChecksResultHeight:    "1.5rem",
 		HideHostname:                false,
 		HideURL:                     false,
 		HidePort:                    false,

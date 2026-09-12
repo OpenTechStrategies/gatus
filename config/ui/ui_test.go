@@ -53,6 +53,15 @@ func TestConfig_ValidateAndSetDefaults(t *testing.T) {
 		if cfg.LoginSubtitle != defaultLoginSubtitle {
 			t.Errorf("expected LoginSubtitle to be %s, got %s", defaultLoginSubtitle, cfg.LoginSubtitle)
 		}
+		if cfg.RecentChecksMaximumRows != 2 {
+			t.Errorf("expected RecentChecksMaximumRows to be 2, got %d", cfg.RecentChecksMaximumRows)
+		}
+		if cfg.RecentChecksResultsPerRow != 50 {
+			t.Errorf("expected RecentChecksResultsPerRow to be 50, got %d", cfg.RecentChecksResultsPerRow)
+		}
+		if cfg.RecentChecksResultHeight != "1.5rem" {
+			t.Errorf("expected RecentChecksResultHeight to be 1.5rem, got %s", cfg.RecentChecksResultHeight)
+		}
 	})
 	t.Run("custom-values", func(t *testing.T) {
 		cfg := &Config{
