@@ -5,6 +5,12 @@ import "github.com/TwiN/gatus/v5/config/key"
 // Status contains the evaluation Results of an Endpoint
 // This is essentially a DTO
 type Status struct {
+	// RecentChecksMaximumRows is the configured maximum number of Recent Checks rows for the UI.
+	RecentChecksMaximumRows int `json:"recentChecksMaximumRows,omitempty"`
+	// RecentChecksResultsPerRow is the configured number of results in each Recent Checks row.
+	RecentChecksResultsPerRow int `json:"recentChecksResultsPerRow,omitempty"`
+	// RecentChecksResultHeight is the configured CSS height of each Recent Checks result.
+	RecentChecksResultHeight string `json:"recentChecksResultHeight,omitempty"`
 	// Name of the endpoint
 	Name string `json:"name,omitempty"`
 

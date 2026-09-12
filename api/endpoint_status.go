@@ -92,6 +92,10 @@ func EndpointStatus(cfg *config.Config) fiber.Handler {
 			logr.Errorf("[api.EndpointStatus] Failed to decode key: %s", err.Error())
 			return c.Status(400).SendString("invalid key encoding")
 		}
+		ep := cfg.GetEndpointByKey(key)
+		if ep == nil {
+			return c.Status(404).SendString("not found")
+		}
 		endpointStatus, err := store.Get().GetEndpointStatusByKey(key, paging.NewEndpointStatusParams().WithResults(page, pageSize).WithEvents(1, cfg.Storage.MaximumNumberOfEvents))
 		if err != nil {
 			if errors.Is(err, common.ErrEndpointNotFound) {
@@ -103,6 +107,11 @@ func EndpointStatus(cfg *config.Config) fiber.Handler {
 		if endpointStatus == nil { // XXX: is this check necessary?
 			logr.Errorf("[api.EndpointStatus] Endpoint with key=%s not found", key)
 			return c.Status(404).SendString("not found")
+		}
+		if ep.UIConfig != nil {
+			endpointStatus.RecentChecksMaximumRows = ep.UIConfig.RecentChecksMaximumRows
+			endpointStatus.RecentChecksResultsPerRow = ep.UIConfig.RecentChecksResultsPerRow
+			endpointStatus.RecentChecksResultHeight = ep.UIConfig.RecentChecksResultHeight
 		}
 		output, err := json.Marshal(endpointStatus)
 		if err != nil {

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/TwiN/gatus/v5/config"
 	"github.com/TwiN/gatus/v5/config/endpoint"
+	endpointui "github.com/TwiN/gatus/v5/config/endpoint/ui"
 	"github.com/TwiN/gatus/v5/storage"
 	"github.com/TwiN/gatus/v5/storage/store"
 	"github.com/TwiN/gatus/v5/watchdog"
@@ -148,6 +150,50 @@ func TestEndpointStatus(t *testing.T) {
 				t.Errorf("%s %s should have returned %d, but returned %d instead", request.Method, request.URL, scenario.ExpectedCode, response.StatusCode)
 			}
 		})
+	}
+}
+
+func TestEndpointStatusIncludesRecentChecksMaximumRows(t *testing.T) {
+	defer store.Get().Clear()
+	defer cache.Clear()
+	endpointConfig := &endpoint.Endpoint{
+		Name:  "frontend",
+		Group: "core",
+		UIConfig: &endpointui.Config{
+			RecentChecksMaximumRows:   3,
+			RecentChecksResultsPerRow: 20,
+			RecentChecksResultHeight:  "0.5rem",
+		},
+	}
+	cfg := &config.Config{
+		Endpoints: []*endpoint.Endpoint{endpointConfig},
+		Storage: &storage.Config{
+			MaximumNumberOfResults: storage.DefaultMaximumNumberOfResults,
+			MaximumNumberOfEvents:  storage.DefaultMaximumNumberOfEvents,
+		},
+	}
+	watchdog.UpdateEndpointStatus(endpointConfig, &endpoint.Result{Success: true, Timestamp: time.Now()})
+
+	response, err := New(cfg).Router().Test(httptest.NewRequest("GET", "/api/v1/endpoints/core_frontend/statuses", http.NoBody))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, response.StatusCode)
+	}
+
+	var status endpoint.Status
+	if err := json.NewDecoder(response.Body).Decode(&status); err != nil {
+		t.Fatal(err)
+	}
+	if status.RecentChecksMaximumRows != 3 {
+		t.Fatalf("expected recentChecksMaximumRows to be 3, got %d", status.RecentChecksMaximumRows)
+	}
+	if status.RecentChecksResultsPerRow != 20 {
+		t.Fatalf("expected recentChecksResultsPerRow to be 20, got %d", status.RecentChecksResultsPerRow)
+	}
+	if status.RecentChecksResultHeight != "0.5rem" {
+		t.Fatalf("expected recentChecksResultHeight to be 0.5rem, got %q", status.RecentChecksResultHeight)
 	}
 }
 
